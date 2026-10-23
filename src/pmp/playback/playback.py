@@ -44,7 +44,7 @@ class PlaybackService:
         
         self._session = self._session_store.load()
         self._config = self._config_store.load()
-        self._stats = self._stats_store.load()
+        self._stats = self._stats_store.load() or Stats()
         self.set_volume(self._config.volume)
         self._save_config()
         
