@@ -1,0 +1,68 @@
+[build-system]
+requires = [
+"setuptools>=77.0.3",
+"setuptools-scm>=8",
+"wheel",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pmp"
+dynamic = ["version"]
+description = "A lightweight, local music player for the terminal."
+readme = "README.md"
+requires-python = ">=3.10,<4"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+authors = [
+{name = "Dev-ev-v", email = "guilhermepapuf.dev@proton.me"},
+]
+
+keywords = [
+"music",
+"music-player",
+"audio-player",
+"terminal",
+"cli",
+"offline",
+"local",
+"privacy",
+"mpv",
+]
+
+classifiers = [
+"Development Status :: 3 - Alpha",
+"Environment :: Console",
+"Intended Audience :: End Users/Desktop",
+"Intended Audience :: Developers",
+"Operating System :: OS Independent",
+"Programming Language :: Python :: 3",
+"Programming Language :: Python :: 3.10",
+"Programming Language :: Python :: 3.11",
+"Programming Language :: Python :: 3.12",
+"Programming Language :: Python :: 3.13",
+"Programming Language :: Python :: 3.14",
+"Topic :: Multimedia :: Sound/Audio :: Players",
+]
+
+dependencies = [
+"typer>=0.12.3,<1.0",
+"platformdirs>=4.0.0",
+"mutagen",
+]
+
+[project.scripts]
+pmp = "pmp.main:app"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_file = "src/pmp/_version.py"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+fallback_version = "0.0.0.dev0"
