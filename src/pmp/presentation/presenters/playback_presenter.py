@@ -8,8 +8,8 @@ class PlaybackPresenter:
     def show_queue(self, queue, playlist_index):
         print(self._renderer.render_queue(queue, playlist_index))
         
-    def show_library(self, playlists, scan_errors):
-        print(self._renderer.render_library(playlists, scan_errors))
+    def show_library(self, playlists, root_songs, scan_errors):
+        print(self._renderer.render_library(playlists, root_songs, scan_errors))
         		
     def show_stats(self, stats, get_song_by_path):
         print(self._renderer.render_stats(stats, get_song_by_path))

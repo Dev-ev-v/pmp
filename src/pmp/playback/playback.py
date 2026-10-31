@@ -70,6 +70,12 @@ class PlaybackService:
     def is_playing(self) -> bool:
     	return not self._player.idle and not self._player.is_paused
     
+    def _is_root_song(self, song: Song) -> bool:
+    	music_dir = Path(self._config.music_dir).resolve()
+    	song_parent = Path(song.path).resolve().parent
+    	
+    	return song_parent == music_dir
+    
     def get_queue_songs(self) -> PlaybackSession or None:
     	session = self._session_store.load()
     	
@@ -305,18 +311,22 @@ class PlaybackService:
     		return []
     	
     	if self._config.global_shuffle:
-    		return [
-    			song
-    			for playlist in self._library.playlists
-    			for song in playlist.songs
-    		]
+    		return self._library.songs
     	
-    	playlist = self._library.get_playlist_by_path(Path(current.path).parent)
+    	if self._is_root_song(current):
+    		playlist = self._library.root_songs
+    	else:
+    		playlist = self._library.get_playlist_by_path(Path(current.path).parent)
     	
     	if playlist is None:
     		return []
     	
-    	return list(playlist.songs)
+    	if isinstance(playlist, Playlist):
+    		songs = playlist.songs
+    	else:
+    		songs = playlist
+    	
+    	return songs
     	
     def _reset_cycle(self):
     	self._cycle.clear()
@@ -439,16 +449,11 @@ class PlaybackService:
             return
 
         if self._config.global_shuffle:
-            songs = [
-                song
-                for playlist in self._library.playlists
-                for song in playlist.songs
-            ]
+            songs = self._library.songs
+        elif self._is_root_song(current):
+        	songs = self._library.root_songs
         else:
-            playlist = self._library.get_playlist_by_path(Path(current.path).parent) 
-            if playlist is None:
-                return
-            songs = list(playlist.songs)
+            songs = self._library.get_playlist_by_path(Path(current.path).parent) 
 
         if not songs:
             return
@@ -512,7 +517,10 @@ class PlaybackService:
         if pos is not None and 0 <= pos < len(queue):
             song = queue[pos]
             if song:
-            	playlist = self._library.get_playlist_by_path(Path(song.path).parent)
+            	if self._is_root_song(song):
+            		playlist = None
+            	else:
+            		playlist = self._library.get_playlist_by_path(Path(song.path).parent)
             	
         return self._player.state(
             song,
@@ -652,16 +660,13 @@ class PlaybackService:
         if not queue:
         	# gets a playlist
         	if global_shuffle:
-        		playlist = [
-        			song
-        			for playlist in self._library.playlists
-        			for song in playlist.songs
-        		]        		
+        		playlist_songs = self._library.songs
+        	elif self._is_root_song(song):
+        		playlist_songs = self._library.root_songs
         	else:
-        		playlist = self._library.get_playlist_by_path(Path(song.path).parent)     
-        		        	
-        	# normalize playlist songs
-        	playlist_songs = playlist if isinstance(playlist, list) else playlist.songs
+        		playlist = self._library.get_playlist_by_path(Path(song.path).parent) 
+        		playlist_songs = playlist.songs
+        	
         	# shuffle or not
         	if shuffle:
         		ordered_songs = random.sample(
@@ -708,7 +713,7 @@ class PlaybackService:
 
         # gets the playlist
         if global_shuffle:
-        	playlist = [song for song in self._library.songs]
+        	playlist = self._library.songs
         else:
         	playlist = self._library.get_playlist(query)
         

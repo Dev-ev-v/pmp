@@ -33,12 +33,13 @@ class MusicLibrary:
         	else None
         )
         self._songs: list[Song] = []
+        self._root_songs: list[Song] = []
         self._playlists: list[Playlist] = []
         
         self._scan_errors: list[tuple[Path, str]] = []
         
-        self._songs_by_path = {}
-        self._playlists_by_path = {}
+        self._songs_by_path: dict[Path, Song] = {}
+        self._playlists_by_path: dict[Path, Playlist] = {}
 
         self.scan()
         
@@ -49,43 +50,62 @@ class MusicLibrary:
     @property
     def music_dir_exists(self):
     	return self._music_dir is not None and self._music_dir.is_dir()
+    	
+    @property
+    def root_songs(self) -> list[Song]:
+        return self._root_songs.copy()
 
+    def file_to_song(self, file) -> Song or None:
+    	if not file.is_file():
+    		return
+    	
+    	if file.suffix.lower() not in SONG_EXTENSIONS:
+    		return
+    	
+    	duration = self._inspect_audio(file)
+    	if duration is None:
+    		return
+    	
+    	song = Song(
+    		title=file.stem,
+    		artist="Unknown Artist",
+    		album=None,
+    		path=file,
+    		duration=duration,
+    	)
+    	
+    	return song
+    
     def scan(self) -> None:
         """Loads library songs"""
         self._songs.clear()
+        self._root_songs.clear()
         self._playlists.clear()
         self._scan_errors.clear()
 
         if not self.music_dir_exists:
-        	return
+            return
 
         for directory in sorted(self._music_dir.iterdir()):
+            if directory.is_file():
+                song = self.file_to_song(directory)
+
+                if song:
+                    self._songs.append(song)
+                    self._root_songs.append(song)
+                continue
+
             if not directory.is_dir():
                 continue
 
             songs: list[Song] = []
 
             for file in sorted(directory.rglob("*")):
-                if not file.is_file():
-                    continue
+                song = self.file_to_song(file)
 
-                if file.suffix.lower() not in SONG_EXTENSIONS:
-                    continue
-
-                duration = self._inspect_audio(file)
-                if duration is None:
-                	continue
-                
-                song = Song(
-                    title=file.stem,
-                    artist="Unknown Artist",
-                    album=None,
-                    path=file,
-                    duration=self._inspect_audio(file),
-                )
-
-                songs.append(song)
-                self._songs.append(song)
+                if song:
+                    songs.append(song)
+                    self._songs.append(song)
 
             if songs:
                 self._playlists.append(
@@ -95,15 +115,15 @@ class MusicLibrary:
                         path=directory,
                     )
                 )
-            
+
         self._songs_by_path = {
-        	song.path.resolve(): song
-        	for song in self._songs
+            song.path.resolve(): song
+            for song in self._songs
         }
-        
+
         self._playlists_by_path = {
-        	playlist.path.resolve(): playlist
-        	for playlist in self._playlists
+            playlist.path.resolve(): playlist
+            for playlist in self._playlists
         }
 
     def _inspect_audio(self, path: Path) -> float | None:

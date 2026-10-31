@@ -158,7 +158,7 @@ def queue():
 @app.command()
 def library():
 	playlists = container.library.playlists
-	container.presenter.show_library(playlists, container.library.scan_errors)	
+	container.presenter.show_library(container.library.playlists, container.library.root_songs, container.library.scan_errors)	
 
 @app.command()
 def shuffle():

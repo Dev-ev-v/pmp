@@ -47,33 +47,53 @@ class PlaybackRenderer:
     			
     def render_queue(self, queue, pos) -> str:
     	parts = []
+    	current_song = None
     	queue = queue[pos:]
     	if not queue:
+    		parts.append("No queue")
     		return
     	for song in queue:
-    		if song == queue[0]:
+    		if song == queue[0] and not current_song:
     			parts.append(f"=> {song.title}")
+    			current_song = song
     		else:
     			parts.append(song.title)
     	
     	return "\n".join(parts)
     	
-    def render_library(self, playlists, scan_errors):
+    def _render_library_table(self, list: Playlist | list, name):
+    	parts = []
+    	parts.append(f"——{name}——")
+    	for i, song in enumerate(list):
+    		parts.append(f"    {i + 1}: {song.title}")
+    		
+    	return parts
+    
+    def render_library(self, playlists, root_songs, scan_errors):
     	parts = []
     	total_songs = 0
-    	for playlist in playlists:
-        	parts.append(f"——{playlist.name}——")
-        	for i, song in enumerate(playlist.songs):
-        		parts.append(f"    {i + 1}: {song.title}")
-        		total_songs += 1
-        	parts.append("")    	
     	
+    	if playlists:
+    		for playlist in playlists:
+    			playlist_parts = self._render_library_table(playlist.songs, playlist.name)
+    			parts.extend(playlist_parts)
+    			total_songs += len(playlist_parts) - 1
+    			parts.append("") 
+    	
+    	
+    	if root_songs:
+    		root_parts = self._render_library_table(root_songs, "Root Songs")
+    		parts.extend(root_parts)
+    		total_songs += len(root_parts) - 1
+    		parts.append("")
+    		
     	parts.append(f"Total songs: {total_songs}")
     	
-    	parts.append("")
-    	parts.append("Scan Errors:")
-    	for error in scan_errors:
-    		parts.append(f"{error[0]}: {error[1]}")
+    	if scan_errors:
+    		parts.append("")
+    		parts.append("Scan Errors:")
+    		for error in scan_errors:
+    			parts.append(f"{error[0]}: {error[1]}")
     	
     	return "\n".join(parts) 
 
