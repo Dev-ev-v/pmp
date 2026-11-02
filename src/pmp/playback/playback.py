@@ -134,24 +134,18 @@ class PlaybackService:
     def save_stats(self):
         self._stats_store.save(self._stats)
 
-
-    def update_stats(
-        self,
-        path: str,
-        amount: float = 0.0,
-        update_time_listen: bool = False,
-        update_played_times: bool = False,
-    ) -> None:
-        if update_time_listen:
-            current = self._stats.time_listen_per_song.get(path, 0.0)
-            self._stats.time_listen_per_song[path] = current + amount
-
-        if update_played_times:
-            current = self._stats.played_times_per_song.get(path, 0)
-            self._stats.played_times_per_song[path] = current + 1
-
-        self._stats.last_played = path
-
+    def update_time_listen(self, path: str, amount: float=0.0):
+    	current = self._stats.time_listen_per_song.get(path, 0.0)
+    	self._stats.time_listen_per_song[path] = current + amount
+    	self._stats.last_played = path
+    	
+    def update_played_times(self, path: str):
+    	current = self._stats.played_times_per_song.get(path, 0)
+    	self._stats.played_times_per_song[path] = current + 1
+    	
+    def update_selection_counts(self, path: str):
+    	current = self._stats.song_selection_counts.get(path, 0)
+    	self._stats.song_selection_counts[path] = current + 1
 
     def has_last_played_changed(self):
         current_song = self._get_current_song()
@@ -173,10 +167,7 @@ class PlaybackService:
 
 
     def _increment_play_count(self, path: str) -> None:
-        self.update_stats(
-        	path,
-        	update_played_times=True,
-        )
+        self.update_played_times(path)
         self._stats.last_played = path
         self._current_track_play_counted = True
 
@@ -235,11 +226,7 @@ class PlaybackService:
         	if abs(actual_advance - expected_advance) > tolerance:
         		return
         		
-        self.update_stats(
-            path,
-            amount=elapsed,
-            update_time_listen=True,
-        )
+        self.update_time_listen(path, amount=elapsed)
 
         self._current_track_listened_seconds += elapsed
 
@@ -697,6 +684,8 @@ class PlaybackService:
         	time=0,
         )
         self.save_session()
+        
+        self.update_selection_counts(str(song.path))
         
         self._player.play(new_queue)
         if self._player.is_paused:

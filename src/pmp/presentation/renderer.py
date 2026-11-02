@@ -97,9 +97,13 @@ class PlaybackRenderer:
     	
     	return "\n".join(parts) 
 
-    def _render_stats_table(self, title, entries, value_header):
+    def _render_stats_table(self, title, entries, value_header, short):
+        SHORT_LENGTH = 10
         if not entries:
             return f"  {title}\n  No data yet."
+            
+        if short:
+        	entries = entries[:SHORT_LENGTH]
 
         rows = [
             (Path(song_path).name, str(value))
@@ -128,7 +132,7 @@ class PlaybackRenderer:
 
         return "\n".join(lines)
 
-    def render_stats(self, stats, get_song_by_path):
+    def render_stats(self, stats, get_song_by_path, short):
         if stats is None or not (
             stats.time_listen_per_song
             or stats.played_times_per_song
@@ -145,6 +149,12 @@ class PlaybackRenderer:
             stats.played_times_per_song.items(),
             key=lambda item: item[1],
             reverse=True,
+        )
+        
+        song_selection_entries = sorted(
+        	stats.song_selection_counts.items(),
+        	key=lambda item: item[1],
+        	reverse=True,
         )        
         
         play_equivalents = stats.time_listen_per_song
@@ -169,18 +179,28 @@ class PlaybackRenderer:
                     for path, seconds in time_entries
                 ],
                 "Time",
+                short,
             ),
             "",
             self._render_stats_table(
                 "PLAY COUNT",
                 play_entries,
                 "Plays",
+                short,
+            ),
+            "",
+            self._render_stats_table(
+            	"SONG SELECTION",
+            	song_selection_entries,
+            	"Selection",
+            	short,
             ),
             "",
             self._render_stats_table(
             	"PLAY EQUIVALENTS",
             	play_equivalents_list,
             	"Equivalents",
+            	short,
             ),
         ]
 

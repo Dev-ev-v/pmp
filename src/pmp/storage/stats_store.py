@@ -14,6 +14,7 @@ class StatsStore:
             "last_played": stats.last_played,
             "time_listen_per_song": stats.time_listen_per_song,
             "played_times_per_song": stats.played_times_per_song,
+            "song_selection_counts": stats.song_selection_counts,
         }
 
         self._path.write_text(
@@ -32,4 +33,5 @@ class StatsStore:
             last_played=data.get("last_played"),
             time_listen_per_song=data.get("time_listen_per_song", {}),
             played_times_per_song=data.get("played_times_per_song", {}),
+            song_selection_counts=data.get("song_selection_counts", {}),
         )
