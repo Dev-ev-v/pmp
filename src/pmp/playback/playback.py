@@ -628,6 +628,8 @@ class PlaybackService:
     		playlist_index=session.pos,
     		time=session.time,
     	)
+    	if self._player.is_paused:
+        	self.pause()
     
     def _play_song(
         self,
