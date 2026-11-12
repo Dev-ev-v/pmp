@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
 from pmp.presentation.formatters import format_time, progress_bar
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
 
 
 class Widget(ABC):
@@ -13,12 +15,13 @@ class Widget(ABC):
 class StatusWidget(Widget):
 
     def render(self, state) -> str:
+        icon = None
         if state.paused:
         	icon = "⏸" 
         	text = "Paused"
         elif not state.duration:
         	icon = "⏹️"        
-        	text = "Nothing playing"
+        	text = "Nothing is being played"
         else:
         	icon =  "▶"
         	text = "Playing"
@@ -51,6 +54,7 @@ class PositionWidget(Widget):
 class VolumeWidget(Widget):
 
     def render(self, state) -> str:
+        icon = None
         if state.volume > 60:
         	icon = "🔊"
         elif state.volume > 30:
@@ -82,17 +86,32 @@ class LoopWidget(Widget):
 		icon = "✅" if state.loop else "❌"
 		return f"🔂 Loop: {icon}"
 		
-class ShuffleWidget(Widget):
+class SourceSelectionWidget(Widget):
 	
 	def render(self, state) -> str:
-		icon = "✅" if state.shuffle else "❌"
-		return f"🔀 Shuffle: {icon}"		
+		source_selection = state.source_selection
+		icon = None
+		if source_selection == SourceSelection.playlist:
+			icon = "️🎶"
+		if source_selection == SourceSelection.universal:					
+			icon = "🌐"
+		if source_selection == SourceSelection.smart:
+			icon = "🤖"
+		
+		return f"{icon} Source: {source_selection.capitalize()}"
+					
 
-class GlobalShuffleWidget(Widget):
+class TrackOrderingWidget(Widget):
 	
 	def render(self, state) -> str:
-		icon = "✅" if state.global_shuffle else "❌"
-		return f"🌐 Global Shuffle: {icon}"	
+		track_ordering = state.track_ordering
+		icon = None
+		if track_ordering == TrackOrdering.sequential:
+			icon = "⬇️ "
+		if track_ordering == TrackOrdering.random:					
+			icon = "🔀"
+		
+		return f"{icon} Track Ordering: {track_ordering.capitalize()}"	
 
 class QueueWidget(Widget):
 

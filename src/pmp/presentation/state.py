@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
 
 @dataclass(slots=True)
 class PlaybackState:
@@ -21,5 +23,5 @@ class PlaybackState:
     path: Path = None
     
     loop: bool = False
-    shuffle: bool = False
-    global_shuffle: bool = False
+    source_selection: SourceSelection = None
+    track_ordering: TrackOrdering = None

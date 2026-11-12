@@ -28,13 +28,13 @@ class CommandHandler:
         
     def _play(self, args):
     	target = args.get("target")
-    	shuffle = args.get(
-    		"shuffle",
+    	source_selection = args.get(
+    		"source_selection",
     		None,
     	)
     	
-    	global_shuffle = args.get(
-    		"global_shuffle",
+    	track_ordering = args.get(
+    		"track_ordering",
     		None,
     	)
     	
@@ -45,8 +45,8 @@ class CommandHandler:
     	
     	self._playback.play(
     		target,
-    		shuffle,
-    		global_shuffle,
+    		source_selection,
+    		track_ordering,
     		resume,
     	)
 
@@ -60,12 +60,16 @@ class CommandHandler:
             	state = self._playback.get_playback_state()
             	return serialize_state(state)
                 
-            if command == "shuffle":
-            	enabled = self._playback.shuffle()
+            if command == "source_selection":
+            	enabled = self._playback.source_selection()
             	return str(enabled)
             
-            if command == "global_shuffle":
-            	enabled = self._playback.global_shuffle()
+            if command == "track_ordering":
+            	enabled = self._playback.track_ordering()
+            	return str(enabled)
+            	
+            if command == "loop":
+            	enabled = self._playback.loop()
             	return str(enabled)
 
             if command == "pause":

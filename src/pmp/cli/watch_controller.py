@@ -28,8 +28,8 @@ class WatchController:
             "a": KeyBinding("a", "+10s", self.advance),
             "A": KeyBinding("A", "+60s", self.advance_long),
             
-            "s": KeyBinding("s", "Shuffle", self.shuffle),
-            "g": KeyBinding("g", "Global Shuffle", self.global_shuffle),
+            "s": KeyBinding("s", "Source", self.source_selection),
+            "o": KeyBinding("o", "order", self.track_ordering),
             
             "i": KeyBinding("i", "+0.25x", self.increase_speed),
             "d": KeyBinding("d", "-0.25x", self.diminue_speed),
@@ -93,12 +93,12 @@ class WatchController:
         self._playback.diminue_speed(0.25)
         return True
         
-    def shuffle(self):
-    	self._client.send("shuffle")
+    def source_selection(self):
+    	self._client.send("source_selection")
     	return True
     	
-    def global_shuffle(self):
-    	self._client.send("global_shuffle")
+    def track_ordering(self):
+    	self._client.send("track_ordering")
     	return True
 
     def volume_up(self):

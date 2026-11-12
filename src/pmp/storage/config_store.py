@@ -2,7 +2,8 @@ import json
 from pathlib import Path
 
 from pmp.storage.config import UserConfig
-
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
 
 class ConfigStore:
     def __init__(self, path: Path):
@@ -10,8 +11,8 @@ class ConfigStore:
 
     def save(self, config: UserConfig) -> None:
         data = {
-            "shuffle": config.shuffle,
-            "global_shuffle": config.global_shuffle,
+            "source_selection": config.source_selection,
+            "track_ordering": config.track_ordering,
             "loop": config.loop,
             "volume": config.volume,
             "music_dir": (
@@ -39,8 +40,8 @@ class ConfigStore:
         music_dir = data.get("music_dir")
 
         return UserConfig(
-            shuffle=data.get("shuffle", False),
-            global_shuffle=data.get("global_shuffle", False),
+            source_selection=data.get("source_selection", SourceSelection.smart),
+            track_ordering=data.get("track_ordering", TrackOrdering.random),
             loop=data.get("loop", False),
             volume=data.get("volume", 100),
             music_dir=(

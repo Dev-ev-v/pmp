@@ -57,8 +57,12 @@ class IPCClient:
             ) from exc
 
         if not response.get("ok"):
-            raise RuntimeError(
-                response.get("error", "Unknown IPC error.")
-            )
+        	error = response.get("error", "Unknown IPC error.")
+        	exception_type = response.get("exception_type", "Exception")
+        	server_traceback = response.get("traceback")
+        	message = f"{exception_type}: {error}"
+        	if server_traceback:
+        		message += f"Server traceback: {server_traceback}"
+        	raise RuntimeError(message)
 
         return response.get("result")

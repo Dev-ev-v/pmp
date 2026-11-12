@@ -1,5 +1,7 @@
+
 import json
 import socket
+import traceback
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -27,8 +29,8 @@ class IPCServer:
 
             with connection:
                 try:
-                    reader = connection.makefile("rb")
-                    line = reader.readline()
+                    with connection.makefile("rb") as reader:
+                        line = reader.readline()
 
                     if not line:
                         continue
@@ -45,6 +47,8 @@ class IPCServer:
                     response = {
                         "ok": False,
                         "error": str(exc),
+                        "exception_type": type(exc).__name__,
+                        "traceback": traceback.format_exc(),
                     }
 
                 payload = (

@@ -9,6 +9,9 @@ import subprocess
 import json
 
 from pmp.presentation.state import PlaybackState
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
+
 from pmp.container import container
 from pmp.player.exceptions import MPVCommandError
 from pmp.cli.watch_controller import WatchController
@@ -158,18 +161,19 @@ def queue():
 @app.command()
 def library():
 	playlists = container.library.playlists
-	container.presenter.show_library(container.library.playlists, container.library.root_songs, container.library.scan_errors)	
-
-@app.command()
-def shuffle():
-	shuffle = container.playback.shuffle()
-	print("shuffle:", shuffle)                                              
-@app.command()
-def global_shuffle():
-	gs = container.playback.global_shuffle()
-	print("global_shuffle:", gs) 	            	                                                 	
+	container.presenter.show_library(container.library.playlists, container.library.root_songs, container.library.scan_errors)	 	            	                                                 	
 			
 @app.command()
 def loop():
-	loop = container.playback.loop()
-	print("loop:", loop)                                                          	                                                 
+	response = client.send("loop")
+	print(response)
+	
+@app.command()
+def source(source: SourceSelection = typer.Argument("")):		 
+	response = client.send("source_selection")
+	print(response)
+	
+@app.command()
+def order(order: TrackOrdering = typer.Argument("")):		
+	response = client.send("track_ordering")
+	print(response)       

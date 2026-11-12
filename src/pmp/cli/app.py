@@ -14,8 +14,8 @@ from pmp.cli.playback import (
     queue,
     library,
     loop,
-    shuffle,
-    global_shuffle,
+    source,
+    order,
 )
 
 
@@ -50,5 +50,5 @@ app.command()(watch)
 app.command()(queue)
 app.command()(library)
 app.command()(loop)
-app.command()(shuffle)
-app.command()(global_shuffle)
+app.command()(order)
+app.command()(source)

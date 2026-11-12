@@ -422,8 +422,8 @@ class Player:
         song,
         queue,
         loop,
-        shuffle,
-        global_shuffle,
+        source_selection,
+        track_ordering,
         playlist,
     ) -> PlaybackState:
         self.ensure_ready()
@@ -447,8 +447,8 @@ class Player:
                 queue=queue,
                 path=None,
                 loop=loop,
-                shuffle=shuffle,
-                global_shuffle=global_shuffle,
+                source_selection=source_selection,
+                track_ordering=track_ordering,
             )
             
         return PlaybackState(
@@ -463,8 +463,8 @@ class Player:
     		queue=queue,
     		path=str(song.path) if song else None,
     		loop=loop,
-    		shuffle=shuffle,
-    		global_shuffle=global_shuffle,
+    		source_selection=source_selection,
+    		track_ordering=track_ordering,
     		playlist=playlist.name if playlist else None,
     		playlist_position=self._get_property_or("playlist-pos", 0),
     	)

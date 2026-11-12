@@ -2,7 +2,7 @@ import random
 from pathlib import Path
 
 from pmp.library.library import MusicLibrary
-from pmp.library.models import Song, Playlist
+from pmp.library.models import Song
 from pmp.player.player import Player
 from pmp.presentation.state import PlaybackState
 
@@ -10,13 +10,16 @@ from pmp.storage.session import PlaybackSession
 from pmp.storage.config import UserConfig
 from pmp.storage.stats import Stats
 
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
+
 from pmp.player.exceptions import MPVCommandError
 
 from pmp.services.exceptions import (
     SongNotFoundError,
     PlaylistNotFoundError,
-    MultipleResultsError,
 )
+from pmp.playback.source_selector import SourceSelector
 
 QUEUE_SIZE = 3
 PLAY_THRESHOLD = 30.0
@@ -48,8 +51,7 @@ class PlaybackService:
         self.set_volume(self._config.volume)
         self._save_config()
         
-        self._cycle = []
-        self._cycle_used = set()
+        self._source_selector = SourceSelector(self._library)
         
         self._tracked_song_path = None
         self._current_track_listened_seconds = 0.0
@@ -115,8 +117,8 @@ class PlaybackService:
         
     def _save_config(self):        
         config = UserConfig(
-        	shuffle=self._config.shuffle,
-        	global_shuffle=self._config.global_shuffle,
+            source_selection=self._config.source_selection,
+            track_ordering=self._config.track_ordering,
         	loop=self._player.get_loop_enabled(),
         	volume=int(self._player._get_property("volume")),
         	music_dir=self._config.music_dir,
@@ -291,130 +293,6 @@ class PlaybackService:
     	
     	return queue[pos]
     
-    def _get_source_songs(self) -> list[Song]:
-    	current = self._get_current_song()
-    	
-    	if current is None:
-    		return []
-    	
-    	if self._config.global_shuffle:
-    		return self._library.songs
-    	
-    	if self._is_root_song(current):
-    		playlist = self._library.root_songs
-    	else:
-    		playlist = self._library.get_playlist_by_path(Path(current.path).parent)
-    	
-    	if playlist is None:
-    		return []
-    	
-    	if isinstance(playlist, Playlist):
-    		songs = playlist.songs
-    	else:
-    		songs = playlist
-    	
-    	return songs
-    	
-    def _reset_cycle(self):
-    	self._cycle.clear()
-    	self._cycle_used.clear()
-
-    
-    def _create_cycle(self, first_song: Song | None = None):
-    	songs = self._get_source_songs()
-    	
-    	if not songs:
-    		self._cycle = []
-    		return
-    		
-    	available = [
-    		song
-    		for song in songs
-    		if song.path not in self._cycle_used
-    	]
-    	
-    	if not available:
-    	   self._cycle_used.clear()
-    	   available = list(songs)
-    	
-    	if self._config.shuffle:
-    		random.shuffle(available)    		
-    	elif first_song is not None:
-    		try:
-    			start = next(
-    				i for i, song in enumerate(available)
-    				if song.path == first_song.path
-    			)
-    		except StopIteration:
-    			start = 0
-    		available = available[start:] + available[:start]
-    	
-    	self._cycle = available[:QUEUE_SIZE]
-    	
-    	for song in self._cycle:
-    		self._cycle_used.add(song.path)
-    
-    def _select_songs(self, amount: int) -> list[Song]:
-    	selected = []
-    	
-    	while len(selected) < amount:
-    		if not self._cycle:
-    			self._create_cycle()
-    			
-    		if not self._cycle:
-    			break
-    		
-    		remaining = amount - len(selected)
-    		take = min(remaining, len(self._cycle))
-    		
-    		selected.extend(self._cycle[:take])
-    		del self._cycle[:take]
-    	
-    	return selected
-    	
-    def _select_sequential(
-        self,
-        songs: list[Song],
-        start_song: Song | None = None,
-        amount: int = QUEUE_SIZE,
-        exclude_paths: set | None = None,
-        include_start: bool = False,
-    ) -> list[Song]:
-        if not songs or amount <= 0:
-            return []
-
-        excluded = exclude_paths or set()
-
-        start = 0
-
-        if start_song is not None:
-            index = next(
-                (
-                    i for i, song in enumerate(songs)
-                    if song.path == start_song.path
-                ),
-                -1,
-            )
-
-            if index >= 0:
-                start = index if include_start else index + 1
-
-        selected = []
-
-        for offset in range(len(songs)):
-            song = songs[(start + offset) % len(songs)]
-
-            if song.path in excluded:
-                continue
-
-            selected.append(song)
-
-            if len(selected) >= amount:
-                break
-
-        return selected
-
-    
     def should_extend_queue(self, threshold=QUEUE_SIZE):
     	queue = self.get_queue_songs()
     	playlist_index = self._player.playlist_position
@@ -426,62 +304,30 @@ class PlaybackService:
     
     def extend_queue(self):
         old_queue = self.get_queue_songs()
-
         if not old_queue:
             return
 
-        current = self._get_current_song()
-        
-        if current is None:
-            return
-
-        if self._config.global_shuffle:
-            songs = self._library.songs
-        elif self._is_root_song(current):
-        	songs = self._library.root_songs
-        else:
-            songs = self._library.get_playlist_by_path(Path(current.path).parent) 
-
-        if not songs:
-            return
-
-        
-        pos, time = self._player.playback_position
+        pos, _ = self._player.playback_position
         queued_paths = {
-        	song.path 
-        	for song in old_queue[pos + 1:]
+            song.path
+            for song in old_queue[pos + 1:]
         }
 
-        self._cycle_used.update(queued_paths)
-
-        if self._config.shuffle:
-            self._cycle = [
-                song
-                for song in self._cycle
-                if song.path not in queued_paths
-            ]
-
-            new_queue = self._select_songs(QUEUE_SIZE)
-
-        else:
-            self._cycle = []
-
-            new_queue = self._select_sequential(
-                songs,
-                start_song=old_queue[-1],
-                amount=QUEUE_SIZE,
-                exclude_paths=queued_paths,
-            )
+        new_queue = self._source_selector.select(
+            source=self._config.source_selection,
+            current_song=old_queue[-1],
+            amount=QUEUE_SIZE,
+            ordering=self._config.track_ordering,
+            stats=self._stats,
+            exclude_paths=queued_paths,
+        )
 
         if not new_queue:
             return
 
         for song in new_queue:
             self._player.append(song)
-
-        self._cycle_used.update(
-            song.path for song in new_queue
-        )
+            self.update_selection_counts(str(song.path))
 
         updated_queue = old_queue + new_queue
         pos, time = self._player.playback_position
@@ -492,8 +338,7 @@ class PlaybackService:
             time=time,
         )
         self.save_session()
-    	
-    
+
     def get_playback_state(self) -> PlaybackState:
         queue = self.get_queue_songs()
 
@@ -513,8 +358,8 @@ class PlaybackService:
             song,
             queue,
             self._player.get_loop_enabled(),
-            self._config.shuffle,
-            self._config.global_shuffle,
+            self._config.source_selection,
+            self._config.track_ordering,
             playlist,
         )
     	
@@ -557,15 +402,40 @@ class PlaybackService:
     	self._save_config()
     	return new_value
     	
-    def shuffle(self):
-    	self._config.shuffle = not self._config.shuffle
-    	self._save_config()
-    	return self._config.shuffle
-    	
-    def global_shuffle(self):
-    	self._config.global_shuffle = not self._config.global_shuffle
-    	self._save_config()
-    	return self._config.global_shuffle
+    def set_source(self, source: SourceSelection):
+        source = SourceSelection(source)
+        self._config.source_selection = source
+
+        # Keep the already queued tracks, but rebuild selector state so that
+        # newly appended tracks follow the newly selected source.
+        queue = self.get_queue_songs()
+        if queue:
+            self._source_selector.restore(queue, source)
+        else:
+            self._source_selector.reset()
+
+        self._save_config()
+        return self._config.source_selection
+
+    def source_selection(self):
+        options = list(SourceSelection)
+        current = SourceSelection(self._config.source_selection)
+        index = options.index(current)
+        return self.set_source(options[(index + 1) % len(options)])
+
+    def set_order(self, order: TrackOrdering):
+        self._config.track_ordering = order
+        self._save_config()
+        return self._config.track_ordering
+
+    def track_ordering(self):
+        options = list(TrackOrdering)
+        current = self._config.track_ordering
+        index = options.index(TrackOrdering(current))
+
+        self._config.track_ordering = options[(index + 1) % len(options)].value
+        self._save_config()
+        return self._config.track_ordering
         
     def pause(self):
         self._player.pause()
@@ -607,154 +477,134 @@ class PlaybackService:
     ######
     
     def _resume(self):
-    	session = self._session_store.load()
-    	
-    	if session is None:
-    		return
-    	
-    	queue = tuple(
-    		self._library.get_song_by_path(path)
-    		for path in session.queue
-    	)
-    		
-    	if any(song is None for song in queue):
-    	       raise RuntimeError("Could not restore saved queue")
-    	       
-    	if not queue:
-    		return
-    	
-    	self._player.play(
-    		queue,
-    		playlist_index=session.pos,
-    		time=session.time,
-    	)
-    	if self._player.is_paused:
-        	self.pause()
-    
+        session = self._session_store.load()
+        if session is None:
+            return
+
+        queue = tuple(
+            self._library.get_song_by_path(path)
+            for path in session.queue
+        )
+        if any(song is None for song in queue):
+            raise RuntimeError("Could not restore saved queue")
+        if not queue:
+            return
+
+        self._source_selector.restore(
+            queue,
+            SourceSelection(self._config.source_selection),
+        )
+        self._player.play(
+            queue,
+            playlist_index=session.pos,
+            time=session.time,
+        )
+        if self._player.is_paused:
+            self.pause()
+
     def _play_song(
         self,
-        query: str=None,
-        queue: list[str]=None,
-        shuffle: bool=None,
-        global_shuffle: bool=None,
+        query: str = None,
+        source_selection: SourceSelection = None,
+        track_ordering: TrackOrdering = None,
     ):
-        # select the initial song
-        if not query:
-        	song = random.choice(self._library.songs)
-        
+        source = SourceSelection(source_selection or self._config.source_selection)
+        ordering = TrackOrdering(track_ordering or self._config.track_ordering)
+
+        if query is None:
+            song = self._source_selector.choose_initial(
+                source,
+                ordering,
+                self._stats,
+            )
         else:
-        	song = self._library.get_song(query)
-        
-        # generate a queue if it does not exist
-        if not queue:
-        	# gets a playlist
-        	if global_shuffle:
-        		playlist_songs = self._library.songs
-        	elif self._is_root_song(song):
-        		playlist_songs = self._library.root_songs
-        	else:
-        		playlist = self._library.get_playlist_by_path(Path(song.path).parent) 
-        		playlist_songs = playlist.songs
-        	
-        	# shuffle or not
-        	if shuffle:
-        		ordered_songs = random.sample(
-        			playlist_songs,
-        			k=len(playlist_songs),
-        		)
-        		index = ordered_songs.index(song)
-        		ordered_songs = (
-        			ordered_songs[index:]
-        			+ ordered_songs[:index]
-        		)
-        		new_queue = ordered_songs[:QUEUE_SIZE]
-        	else:
-        		new_queue = self._select_sequential(
-        			playlist_songs,
-        			start_song=song,
-        			amount=QUEUE_SIZE,
-        			include_start=True,
-        		)
-        
-        self._cycle_used.update(
-        	song.path for song in new_queue
+            song = self._library.get_song(query)
+
+        if song is None:
+            raise SongNotFoundError(query or "The music library is empty")
+
+        self._source_selector.register_selected(song, source)
+        remaining = self._source_selector.select(
+            source=source,
+            current_song=song,
+            amount=QUEUE_SIZE - 1,
+            ordering=ordering,
+            stats=self._stats,
         )
-        
+        new_queue = (song, *remaining)
+
+        for selected_song in new_queue:
+            self.update_selection_counts(str(selected_song.path))
+
         self._update_session(
-        	new_queue,
-        	pos=0,
-        	time=0,
+            new_queue,
+            pos=0,
+            time=0,
         )
         self.save_session()
-        
-        self.update_selection_counts(str(song.path))
-        
         self._player.play(new_queue)
         if self._player.is_paused:
-        	self.pause()
-        
+            self.pause()
 
     def _play_playlist(
         self,
-        query: str,
-        shuffle: bool,
-        global_shuffle: bool,
+        query: str = None,
+        source_selection: SourceSelection = None,
+        track_ordering: TrackOrdering = None,
     ):
-    	# similar to _play_song, but simpler, because works with playlists only
+        playlist = self._library.get_playlist(query) if query else None
+        if playlist is None:
+            raise PlaylistNotFoundError(query or "No playlist specified")
+        if not playlist.songs:
+            raise PlaylistNotFoundError(f"Playlist is empty: {query}")
 
-        # gets the playlist
-        if global_shuffle:
-        	playlist = self._library.songs
-        else:
-        	playlist = self._library.get_playlist(query)
-        
-        
-        # normalize playlist songs
-        playlist_songs = playlist if isinstance(playlist, list) else playlist.songs
-        # if shuffle, randomize the playlist
-        if shuffle:
-        	queue = tuple(
-        		random.sample(
-        			playlist_songs,
-        			k=min(QUEUE_SIZE, len(playlist_songs)),
-        		)
-        	)
-        else:
-        	queue = self._select_sequential(
-        		playlist_songs,
-        		amount=QUEUE_SIZE,
-        	)
-        	
-        self._cycle_used.update(
-        	song.path for song in queue
+        source = SourceSelection(source_selection or self._config.source_selection)
+        ordering = TrackOrdering(track_ordering or self._config.track_ordering)
+
+        # The requested playlist determines the starting song. The configured
+        # source determines where subsequent songs are selected from.
+        first_song = (
+            random.choice(playlist.songs)
+            if ordering == TrackOrdering.random
+            else playlist.songs[0]
         )
-        
+        self._source_selector.register_selected(first_song, source)
+        remaining = self._source_selector.select(
+            source=source,
+            current_song=first_song,
+            amount=QUEUE_SIZE - 1,
+            ordering=ordering,
+            stats=self._stats,
+        )
+        queue = (first_song, *remaining)
+
+        for song in queue:
+            self.update_selection_counts(str(song.path))
+
         self._update_session(
-        	queue,
-        	pos=0,
-        	time=0,
+            queue,
+            pos=0,
+            time=0,
         )
         self.save_session()
-        
         self._player.play(queue)
         if self._player.is_paused:
-        	self.pause()
-    
-        
+            self.pause()
+
     def play(
         self,
         target: str = None,
-        shuffle: bool | None = None,
-        global_shuffle: bool | None = None,
+        source_selection: SourceSelection =None,
+        track_ordering: TrackOrdering =None,
         resume: bool = False,
     ):
         self._library.scan()
         	
-        if shuffle is not None:
-            self._config.shuffle = shuffle
+        if source_selection is not None:
+            self._config.source_selection = source_selection
 
-        if global_shuffle is not None:
-            self._config.global_shuffle = global_shuffle
+        if track_ordering is not None:
+            self._config.track_ordering = track_ordering
 
         self._save_config()
 
@@ -762,28 +612,28 @@ class PlaybackService:
             self._resume()
             return
 
-        self._reset_cycle()
+        self._source_selector.reset()
 
         if target is None:
             self._play_song(
-                shuffle=self._config.shuffle,
-                global_shuffle=self._config.global_shuffle,
+                source_selection=self._config.source_selection,
+                track_ordering=self._config.track_ordering,
             )
             return
 
         if target["type"] == "song":
             self._play_song(
                 target["name"],
-                shuffle=self._config.shuffle,
-                global_shuffle=self._config.global_shuffle,
+                source_selection=self._config.source_selection,
+                track_ordering=self._config.track_ordering,
             )
             return
 
         if target["type"] == "playlist":
             self._play_playlist(
                 target["name"],
-                shuffle=self._config.shuffle,
-                global_shuffle=self._config.global_shuffle,
+                source_selection=self._config.source_selection,
+                track_ordering=self._config.track_ordering,
             )
             return
 

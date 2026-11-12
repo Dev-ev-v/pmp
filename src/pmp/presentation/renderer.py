@@ -10,8 +10,8 @@ from pmp.presentation.widgets import (
     SpeedWidget,
     QueueWidget,
     LoopWidget,
-    ShuffleWidget,
-    GlobalShuffleWidget
+    SourceSelectionWidget,
+    TrackOrderingWidget
 )
 
 
@@ -26,8 +26,8 @@ class PlaybackRenderer:
             SpeedWidget(),
             AlbumWidget(),
             LoopWidget(),
-            ShuffleWidget(),
-            GlobalShuffleWidget(),
+            SourceSelectionWidget(),
+            TrackOrderingWidget(),
             QueueWidget(),
         ]
 

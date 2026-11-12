@@ -5,7 +5,8 @@ from pmp.cli.play_resolver import PlayResolver
 from pmp.ipc.client import IPCClient
 from pmp.daemon.daemon_manager import DaemonManager
 from pmp.paths import paths
-
+from pmp.domain.source_selection import SourceSelection
+from pmp.domain.track_ordering import TrackOrdering
 
 app = typer.Typer()
 
@@ -15,12 +16,8 @@ daemon_manager = DaemonManager(container.config)
 @app.callback(invoke_without_command=True)
 def play(
     name: str = typer.Argument(None),
-    shuffle: bool = typer.Option(None, "--shuffle", "-s"),
-    global_shuffle: bool = typer.Option(
-        None,
-        "--global_shuffle",
-        "-gs",
-    ),
+    source: SourceSelection = typer.Option(None, "--source"),
+    order: TrackOrdering = typer.Option(None, "--order"),
 ):
     if not container.library.music_dir_exists:
         print("Music dir not defined in config file")
@@ -52,8 +49,8 @@ def play(
         	"play",
         	{
         		"target": target,
-        		"shuffle": shuffle,
-        		"global_shuffle": global_shuffle,
+        		"source_selection": source,
+        		"track_ordering": order,
         		"resume": can_resume,
         	},
         )
