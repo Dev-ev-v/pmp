@@ -410,7 +410,7 @@ class Player:
             else:
                 value = self._query_property(name)
 
-        except RuntimeError as exc:
+        except (MPVCommandError, RuntimeError) as exc:
             if "property unavailable" in str(exc):
                 return default
             raise
@@ -427,7 +427,10 @@ class Player:
         playlist,
     ) -> PlaybackState:
         self.ensure_ready()
-        idle = self._query_property("idle-active")
+        try:
+        	idle = self._query_property("idle-active")
+        except Exception:
+        	idle = True
 
         if idle:
             return PlaybackState(
