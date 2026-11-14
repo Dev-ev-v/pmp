@@ -15,12 +15,29 @@ PMP is currently in alpha. It is usable, actively developed, and not yet tested 
 - Search: Find songs and playlists in your library.
 - Playback queue: Manage the songs waiting to be played.
 - Playback controls: Navigate between tracks, seek within songs, and control playback volume.
-- Shuffle and loop: Listen in randomized order or repeat playback.
+- Loop: listen a song in loop mode
 - Session recovery: Resume a saved playback session.
 - Listening statistics: Track playback activity and listening habits.
 - Terminal miniplayer: Monitor the current track and playback progress.
 
 PMP is designed for music you already have locally. It does not provide a streaming catalog, host music files, or replace music distribution services.
+
+## Playback modes
+
+PMP separates music source selection from track ordering, allowing different playback behaviors to be combined.
+
+### Source selection
+
+- Playlist: Select tracks from the current collection.
+- Universal: Rotate between available playlists and songs stored in the root music directory.
+- Smart: Prioritize tracks with fewer plays and fewer previous selections, using listening statistics.
+
+### Track ordering
+
+- Sequential: Select tracks in sequence.
+- Random: Select tracks randomly.
+
+These options can be combined independently to customize playback behavior.
 
 ## Requirements
 
@@ -55,8 +72,8 @@ pmp --help
 To install a development version, clone the PMP repository and install the local project:
 
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/Dev-ev-v/pmp.git
+cd pmp
 python -m pip install .
 ```
 
@@ -80,9 +97,9 @@ This displays the commands and options available in your installed version.
 pmp play
 ```
 
-If no music directory is configured, PMP will prompt you to configure one. Choose a directory containing supported audio files.
+If no music directory is configured, it is necessary to listen musics in pmp. Choose a directory containing supported audio files.
 
-If a music directory is already configured, PMP plays a random track from your library.
+If a music directory is already configured, PMP plays a song from your library depending of your configuration.
 
 To play a specific song or playlist:
 
@@ -150,7 +167,7 @@ PMP is intended for local playback, not music hosting or distribution. Users are
 - Improve and verify support for Windows and macOS.
 - Add support for video files.
 - Add support for basic audio effects.
-- Improve error handling when MPV is misding or fails to start.
+- Improve error handling when MPV is missing or fails to start.
 
 ## Contributing
 
