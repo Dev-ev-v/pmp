@@ -6,8 +6,8 @@ from pmp.domain.track_ordering import TrackOrdering
 
 @dataclass(slots=True)
 class UserConfig:
-    source_selection: SourceSelection = None
-    track_ordering: TrackOrdering = None
+    source_selection: SourceSelection = SourceSelection.smart
+    track_ordering: TrackOrdering = TrackOrdering.random
     loop: bool = False
     volume: int = 100
     music_dir: Path | None = None
