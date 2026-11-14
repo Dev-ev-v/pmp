@@ -44,7 +44,7 @@ class DaemonManager:
             		"pmp.daemon",
             	],
             	start_new_session=True,
-            	#stdin=subprocess.DEVNULL,
+            	stdin=subprocess.DEVNULL,
             	stdout=log_file,
             	stderr=subprocess.STDOUT,
             )
