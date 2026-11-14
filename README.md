@@ -56,8 +56,9 @@ PMP is intended to support Linux, Windows, and macOS, but compatibility has not 
 Install PMP using pip:
 
 ```bash
-python -m pip install pmp
+python -m pip install platypus-music
 ```
+The PyPI package is named platypus-music, but the command and Python module are pmp.
 
 Make sure mpv is installed separately before attempting playback.
 

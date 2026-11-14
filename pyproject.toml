@@ -7,7 +7,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pmp"
+name = "platypus-music"
 dynamic = ["version"]
 description = "A lightweight, local music player for the terminal."
 readme = "README.md"
