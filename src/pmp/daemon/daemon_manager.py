@@ -5,6 +5,7 @@ import socket
 import subprocess
 import sys
 import time
+import json
 from pathlib import Path
 
 from pmp.ipc.server import HOST, PORT
@@ -28,9 +29,29 @@ class DaemonManager:
             self._remove_pid()
             return False
         except PermissionError:
-            return True
+            # O processo existe, mas não temos permissão para
+            # enviar sinais. Ainda precisamos validar sua identidade.
+            pass
+
+        if not self._is_daemon(pid):
+            self._remove_pid()
+            return False
 
         return True
+
+
+    def _read_pid(self):
+        try:
+            pid = int(self._pid_file.read_text().strip())
+        except (FileNotFoundError, ValueError, OSError):
+            self._remove_pid()
+            return None
+
+        if pid <= 1:
+            self._remove_pid()
+            return None
+
+        return pid
 
     def start(self):
         if self.is_running():
@@ -38,47 +59,90 @@ class DaemonManager:
 
         with paths.log.open("a") as log_file:
             subprocess.Popen(
-            	[
-            		sys.executable,
-            		"-m",
-            		"pmp.daemon",
-            	],
-            	start_new_session=True,
-            	stdin=subprocess.DEVNULL,
-            	stdout=log_file,
-            	stderr=subprocess.STDOUT,
+                [
+                    sys.executable,
+                    "-m",
+                    "pmp.daemon",
+                ],
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
             )
 
-        self._wait_until_ready()
+        try:
+            self._wait_until_ready()
+
+        except Exception as startup_error:
+            pid = self._read_pid()
+
+            if pid is not None and self._is_daemon(pid):
+                try:
+                    self._terminate_process(
+                        pid,
+                        self._is_daemon,
+                    )
+                except (OSError, RuntimeError) as cleanup_error:
+                    raise RuntimeError(
+                        "Daemon startup failed and cleanup "
+                        f"also failed: {cleanup_error}"
+                    ) from startup_error
+
+                self._remove_pid()
+
+            raise
 
     def ensure_running(self):
         if not self.is_running():
             self.start()
 
     def _wait_until_ready(self):
-        timeout = 5
+        timeout = 5.0
         start = time.monotonic()
 
         while time.monotonic() - start < timeout:
             try:
                 with socket.create_connection(
                     (HOST, PORT),
-                    timeout=0.2,
-                ):
-                    return
+                    timeout=0.5,
+                ) as connection:
+                    connection.settimeout(0.5)
 
-            except OSError:
+                    request = {
+                        "command": "ping",
+                    }
+
+                    connection.sendall(
+                        (json.dumps(request) + "\n").encode("utf-8")
+                    )
+
+                    with connection.makefile("rb") as reader:
+                        line = reader.readline(1024 * 1024 + 1)
+                    if not line:
+                        raise ConnectionError(
+                            "Daemon closed the connection without a response."
+                        )
+
+                    response = json.loads(line.decode("utf-8"))
+                    if not isinstance(response, dict):
+                    	raise ValueError("Invalid daemon response.")
+                    if (
+                        response.get("ok") is True
+                        and response.get("result") == "pong"
+                    ):
+                        return
+
+            except (
+                OSError,
+                ValueError,
+                ConnectionError,
+                json.JSONDecodeError,
+            ):
                 time.sleep(0.05)
 
         raise RuntimeError(
             "PMP daemon did not become ready."
         )
-
-    def _read_pid(self):
-        try:
-            return int(self._pid_file.read_text())
-        except (FileNotFoundError, ValueError):
-            return None
 
     def _remove_pid(self):
         try:

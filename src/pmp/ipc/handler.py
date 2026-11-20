@@ -51,10 +51,22 @@ class CommandHandler:
     	)
 
     def handle(self, request):
-        command = request["command"]
+        if not isinstance(request, dict):
+            raise ValueError("Request must be a JSON object.")
+
+        command = request.get("command")
+
+        if not isinstance(command, str):
+            raise ValueError("Request must contain a valid command.")
+
         args = request.get("args", {})
 
+        if not isinstance(args, dict):
+            raise ValueError("'args' must be a JSON object.")
+
         try:
+            if command == "ping":
+                return "pong"
                 
             if command == "get_state":
             	state = self._playback.get_playback_state()
