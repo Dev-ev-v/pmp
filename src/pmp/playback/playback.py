@@ -127,7 +127,7 @@ class PlaybackService:
         self._config_store.save(config)
         
     def get_stats(self):
-    	return self._stats_store.load()
+    	return self._stats
     
     def load_stats(self):
         self._stats = self._stats_store.load() or Stats()
@@ -225,8 +225,8 @@ class PlaybackService:
         		self._current_track_play_counted = False
         		return
         	
-        	if abs(actual_advance - expected_advance) > tolerance:
-        		return
+        if abs(actual_advance - expected_advance) > tolerance:
+        	return
         		
         self.update_time_listen(path, amount=elapsed)
 
@@ -308,6 +308,7 @@ class PlaybackService:
             return
 
         pos, _ = self._player.playback_position
+
         queued_paths = {
             song.path
             for song in old_queue[pos + 1:]
@@ -325,11 +326,12 @@ class PlaybackService:
         if not new_queue:
             return
 
+        # Add the selected tracks to the actual MPV playlist.
         for song in new_queue:
             self._player.append(song)
-            self.update_selection_counts(str(song.path))
 
         updated_queue = old_queue + new_queue
+
         pos, time = self._player.playback_position
 
         self._update_session(
@@ -533,8 +535,8 @@ class PlaybackService:
         )
         new_queue = (song, *remaining)
 
-        for selected_song in new_queue:
-            self.update_selection_counts(str(selected_song.path))
+        if query is not None:
+        	self.update_selection_counts(str(song.path))
 
         self._update_session(
             new_queue,
@@ -577,9 +579,6 @@ class PlaybackService:
             stats=self._stats,
         )
         queue = (first_song, *remaining)
-
-        for song in queue:
-            self.update_selection_counts(str(song.path))
 
         self._update_session(
             queue,
