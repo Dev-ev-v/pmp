@@ -8,8 +8,9 @@ app = typer.Typer()
 @app.callback(invoke_without_command=True)
 def stats(
 	short: bool = typer.Option(False, "--short"),
+	title: bool = typer.Option(False, "--title"),
 ):
 	
 	stats = container.playback.get_stats()
 	get_song_by_path = container.library.get_song_by_path
-	container.presenter.show_stats(stats, get_song_by_path, short)
+	container.presenter.show_stats(stats, get_song_by_path, short, title)

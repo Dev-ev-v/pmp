@@ -1,6 +1,8 @@
+import math
 from pathlib import Path
 
 from pmp.presentation.formatters import format_duration
+from pmp.library.models import Playlist
 from pmp.presentation.widgets import (
     AlbumWidget,
     MetadataWidget,
@@ -132,42 +134,35 @@ class PlaybackRenderer:
 
         return "\n".join(lines)
 
-    def render_stats(self, stats, get_song_by_path, short):
+    def render_stats(self, stats, get_song_by_path, short, title):
         if stats is None or not (
             stats.time_listen_per_song
             or stats.played_times_per_song
+            or stats.song_selection_counts
         ):
             return "No stats yet. Try listening to some music."
+        def title_of(path):
+            song = get_song_by_path(Path(path))
+            if song and song.title:
+                return song.title.casefold()
+            return Path(path).stem.casefold()
 
-        time_entries = sorted(
-            stats.time_listen_per_song.items(),
-            key=lambda item: item[1],
-            reverse=True,
-        )
+        def sort_entries(items):
+            if title:
+                return sorted(items, key=lambda item: title_of(item[0]))
+            return sorted(items, key=lambda item: item[1], reverse=True)
 
-        play_entries = sorted(
-            stats.played_times_per_song.items(),
-            key=lambda item: item[1],
-            reverse=True,
-        )
-        
-        song_selection_entries = sorted(
-        	stats.song_selection_counts.items(),
-        	key=lambda item: item[1],
-        	reverse=True,
-        )        
-        
-        play_equivalents = stats.time_listen_per_song
-        for key, value in play_equivalents.items():
-        	song = get_song_by_path(Path(key))
-        	if song:
-        		play_equivalents[key] = round(value / song.duration, 2)
-        	
-        play_equivalents_list = sorted(
-            play_equivalents.items(),
-            key=lambda item: item[1],
-            reverse=True,
-        )        
+        time_entries = sort_entries(stats.time_listen_per_song.items())
+        play_entries = sort_entries(stats.played_times_per_song.items())
+        song_selection_entries = sort_entries(stats.song_selection_counts.items())
+
+        play_equivalents = {}
+        for key, value in stats.time_listen_per_song.items():
+            song = get_song_by_path(Path(key))
+            if song and song.duration is not None and song.duration > 0:
+                play_equivalents[key] = round(value / song.duration, 2)
+
+        play_equivalents_list = sort_entries(play_equivalents.items())
 
         sections = [
             "PMP | STATISTICS",
