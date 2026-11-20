@@ -15,7 +15,7 @@ PMP is currently in alpha. It is usable, actively developed, and not yet tested 
 - Search: Find songs and playlists in your library.
 - Playback queue: Manage the songs waiting to be played.
 - Playback controls: Navigate between tracks, seek within songs, and control playback volume.
-- Loop: listen a song in loop mode
+- Loop: Listen to a song in loop mode.
 - Session recovery: Resume a saved playback session.
 - Listening statistics: Track playback activity and listening habits.
 - Terminal miniplayer: Monitor the current track and playback progress.
@@ -42,12 +42,12 @@ These options can be combined independently to customize playback behavior.
 ## Requirements
 
 - Python 3.10 or newer.
-- "mpv" (https://mpv.io/), installed separately and available to PMP.
+- `mpv`, installed separately and available to PMP.
 - A local collection of supported audio files.
 
 PMP uses mpv as its playback engine. Installing the Python package alone does not install the external player.
 
-PMP is intended to support Linux, Windows, and macOS, but compatibility has not yet been fully verified on every platform.
+Daemon management currently relies on Linux `/proc` process metadata. Windows and macOS support has not yet been implemented or verified.
 
 ## Installation
 
@@ -58,7 +58,8 @@ Install PMP using pip:
 ```bash
 python -m pip install platypus-music
 ```
-The PyPI package is named platypus-music, but the command and Python module are pmp.
+
+The PyPI package is named `platypus-music`, but the command and Python module are `pmp`.
 
 Make sure mpv is installed separately before attempting playback.
 
@@ -78,8 +79,6 @@ cd pmp
 python -m pip install .
 ```
 
-Replace the placeholders with the actual repository URL and directory name.
-
 Development versions may contain unfinished features or bugs. Use them accordingly.
 
 ## Getting started
@@ -98,9 +97,9 @@ This displays the commands and options available in your installed version.
 pmp play
 ```
 
-If no music directory is configured, it is necessary to listen musics in pmp. Choose a directory containing supported audio files.
+If no music directory is configured, PMP displays the path to its configuration file. Set `music_dir` there to the directory containing your music before starting playback.
 
-If a music directory is already configured, PMP plays a song from your library depending of your configuration.
+If a music directory is already configured, PMP plays a song from your library according to your configuration.
 
 To play a specific song or playlist:
 
@@ -130,7 +129,14 @@ Opens a miniplayer for easier playback and queue control.
 pmp stats
 ```
 
-Displays statistics for previously played tracks.
+Displays listening time, play counts, song selections, and play equivalents.
+
+Use `--title` to sort the statistics alphabetically by song title, or `--short` to limit each section to its first ten entries:
+
+```bash
+pmp stats --title
+pmp stats --short
+```
 
 ### Reset the session
 
@@ -138,17 +144,17 @@ Displays statistics for previously played tracks.
 pmp reset
 ```
 
-Use this command to reset the current session if playback gets stuck or behaves unexpectedly.
+Use this command to reset the current session if playback gets stuck or behaves unexpectedly. It preserves the user's configuration and statistics.
 
 ## Supported audio
 
 PMP is intended for local audio playback. The current implementation recognizes these file extensions:
 
-- MP3 (".mp3")
-- M4A (".m4a")
-- FLAC (".flac")
-- Ogg (".ogg")
-- WAV (".wav")
+- MP3 (`.mp3`)
+- M4A (`.m4a`)
+- FLAC (`.flac`)
+- Ogg (`.ogg`)
+- WAV (`.wav`)
 
 Actual playback compatibility also depends on the codecs and formats supported by the installed mpv build.
 
@@ -165,7 +171,7 @@ PMP is intended for local playback, not music hosting or distribution. Users are
 ## Roadmap
 
 - Replace file paths with stable song identifiers, such as unique IDs.
-- Improve and verify support for Windows and macOS.
+- Implement and verify support for Windows and macOS.
 - Add support for video files.
 - Add support for basic audio effects.
 - Improve error handling when MPV is missing or fails to start.
