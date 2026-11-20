@@ -29,7 +29,7 @@ class WatchController:
             "A": KeyBinding("A", "+60s", self.advance_long),
             
             "s": KeyBinding("s", "Source", self.source_selection),
-            "o": KeyBinding("o", "order", self.track_ordering),
+            "o": KeyBinding("o", "Order", self.track_ordering),
             
             "i": KeyBinding("i", "+0.25x", self.increase_speed),
             "d": KeyBinding("d", "-0.25x", self.diminue_speed),
